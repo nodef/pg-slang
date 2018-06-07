@@ -70,8 +70,8 @@ function parseValue(val) {
   return parseExpression(val);
 };
 
-async function getColumn(from, txt, fn, ths=null) {
-  var type = 'column', hint = null;
+async function getColumn(type, from, txt, fn, ths=null) {
+  var hint = null;
   if(HINT_ALL.test(txt)) hint = 'all';
   else if(HINT_SUM.test(txt)) hint = 'sum';
   else if(HINT_AVG.test(txt)) hint = 'avg';
@@ -81,15 +81,15 @@ async function getColumn(from, txt, fn, ths=null) {
   return hint==='sum'? getSum(ans):getAvg(ans);
 };
 
-function setSubexpression(from, ast, k, fn, ths=null) {
+function setSubexpression(type, from, ast, k, fn, ths=null) {
   if(ast[k]==null || typeof ast[k]!=='object') return Promise.resolve();
-  if(ast[k].type==='column_ref') return getColumn(from, ast[k].column, fn, ths).then(ans => ast[k]=ans[0]);
-  return Promise.all(Object.keys(ast[k]).map(l => setSubexpression(from, ast[k], l, fn, ths)));
+  if(ast[k].type==='column_ref') return getColumn(type, from, ast[k].column, fn, ths).then(ans => ast[k]=ans[0]);
+  return Promise.all(Object.keys(ast[k]).map(l => setSubexpression(type, from, ast[k], l, fn, ths)));
 };
 
-function getExpression(from, ast, fn, ths=null) {
-  if(ast.type==='column_ref') return getColumn(from, ast.column, fn, ths);
-  return Promise.all(Object.keys(ast).map(k => setSubexpression(from, ast, k, fn, ths))).then(() => [ast]);
+function getExpression(type, from, ast, fn, ths=null) {
+  if(ast.type==='column_ref') return getColumn(type, from, ast.column, fn, ths);
+  return Promise.all(Object.keys(ast).map(k => setSubexpression(type, from, ast, k, fn, ths))).then(() => [ast]);
 };
 
 function asExpression(expr) {
@@ -103,7 +103,7 @@ function asColumn(col, len, as) {
 
 async function tweakColumns(from, ast, fn, ths=null) {
   var columns = ast.columns, to = [];
-  var ans = await Promise.all(columns.map(col => getExpression(from, col.expr, fn, ths)));
+  var ans = await Promise.all(columns.map(col => getExpression('columns', from, col.expr, fn, ths)));
   for(var i=0, I=columns.length; i<I; i++) {
     var col = columns[i], exps = ans[i];
     for(var exp of exps) {
@@ -115,16 +115,16 @@ async function tweakColumns(from, ast, fn, ths=null) {
 };
 
 function tweakWhere(from, ast, fn, ths=null) {
-  setSubexpression(from, ast, 'where', fn, ths);
+  setSubexpression('where', from, ast, 'where', fn, ths);
 };
 
 function tweakHaving(from, ast, fn, ths=null) {
-  setSubexpression(from, ast, 'having', fn, ths);
+  setSubexpression('having', from, ast, 'having', fn, ths);
 };
 
 async function tweakOrderBy(from, ast, fn, ths=null) {
   var orderby = ast.orderby, to = [];
-  var ans = await Promise.all(orderby.map(col => getExpression(from, col.expr, fn, ths)));
+  var ans = await Promise.all(orderby.map(col => getExpression('orderBy', from, col.expr, fn, ths)));
   for(var i=0, I=orderby.length; i<I; i++) {
     var col = orderby[i], exps = ans[i];
     for(var exp of exps)
@@ -135,7 +135,7 @@ async function tweakOrderBy(from, ast, fn, ths=null) {
 
 async function tweakGroupBy(from, ast, fn, ths=null) {
   var groupby = ast.groupby, to = [];
-  var ans = await Promise.all(groupby.map(exp => getExpression(from, exp, fn, ths)));
+  var ans = await Promise.all(groupby.map(exp => getExpression('groupBy', exp, fn, ths)));
   for(var val of ans)
     to.push.apply(to, val);
   ast.groupby = to
@@ -172,7 +172,7 @@ function appendWhere(ast, exp) {
 
 async function scanFrom(ast, fn, ths=null) {
   var from = ast.from, to = new Set(), where = [];
-  var ans = await Promise.all(from.map(b => fn.call(ths, b.table, 'table', null, null)||[]));
+  var ans = await Promise.all(from.map(b => fn.call(ths, b.table, 'from', null, null)||[]));
   for(var vals of ans) {
     for(var val of vals) {
       if(IDENTIFIER.test(val)) to.add(dequote(val));
