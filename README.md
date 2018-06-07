@@ -14,8 +14,8 @@ WHERE TRUE AND (FALSE OR ("tsvector" @@ 'apples'))
 
 ```javascript
 const slang = require('pg-slang');
-// slang(<informal sql>, <map function>, [this], [options])
-// -> Promise <formal sql>
+// slang(<informal sql>, <map fn>, [this], [options])
+// -> Promise (formal sql)
 
 // <informal sql>:
 // SELECT "food name", "trans fat" FROM "food" ORDER BY "trans fat" DESC
@@ -23,10 +23,11 @@ const slang = require('pg-slang');
 // SELECT "sum: essential amino acids" AS "amino" FROM "meat" ORDER BY "amino"
 // ...
 
-// <map function>(<text>, <type>, <hint>):
+// <map fn>(<text>, <type>, [hint], [from]):
 // - text: field name, like "food name", "trans fat", "food", ...
 // - type: field type, can be "column" or "table"
 // - hint: field hint, can be null, "all", "sum", or "avg"
+// - from: field from, will be null for type=table
 // -> Promise [<value>]
 // - value: expression string
 
@@ -38,14 +39,14 @@ const slang = require('pg-slang');
 
 ```javascript
 // 1. 
-function fnA(text, type, hint) {
+function fnA(text, type, hint, from) {
   return ['sample1', 'sample1'];
 };
 slang(`SELECT "food name", "calcium" FROM "apples"`, fnA).then(console.log);
 // SELECT "sample", "sample" FROM "sample" WHERE TRUE AND TRUE
 
 
-function fnB(text, type, hint) {
+function fnB(text, type, hint, from) {
   if(type==='column') return ['name'];
   return ['compositions'];
 };
@@ -53,7 +54,7 @@ slang(`SELECT "food name", "calcium" FROM "apples"`, fnB).then(console.log);
 // SELECT "name", "name" FROM "compositions" WHERE TRUE AND TRUE
 
 
-function fnC(text, type, hint) {
+function fnC(text, type, hint, from) {
   if(type==='column') return ['ca', 'ca_e'];
   return ['compositions'];
 };
@@ -68,7 +69,7 @@ var columns = {
   'magnesium': ['mg', 'mg_e']
 };
 var tables = ['food', 'compositions'];
-function fnD(text, type, hint) {
+function fnD(text, type, hint, from) {
   if(type==='column') return columns[text];
   return tables.includes(text)? ['compositions']:[];
 };
@@ -76,7 +77,7 @@ slang(`SELECT "food name", "calcium" FROM "apples"`, fnD).then(console.log);
 // SELECT "name", "ca", "ca_e" FROM "null" WHERE TRUE AND TRUE
 
 
-function fnE(text, type, hint) {
+function fnE(text, type, hint, from) {
   if(type==='column') return columns[text];
   return tables.includes(text)? ['compositions']:[`"tsvector" @@ '${text}'`];
 };
@@ -91,7 +92,7 @@ slang(`SELECT "food name", "calcium" FROM "apples"`, fnE, null, options).then(co
 
 // PRIMARY USECASE
 // ---------------
-function fnDB(text, type, hint) {
+function fnDB(text, type, hint, from) {
   return new Promise((resolve, reject) => {
     // ...
     // <do some database lookup>
