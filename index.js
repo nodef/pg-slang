@@ -101,8 +101,8 @@ function asColumn(col, len, as) {
   return txt = len>1 && as!=null? as+': '+col:as;
 };
 
-async function tweakColumns(ast, fn, ths=null) {
-  var columns = ast.columns, from = ast.from, to = [];
+async function tweakColumns(from, ast, fn, ths=null) {
+  var columns = ast.columns, to = [];
   var ans = await Promise.all(columns.map(col => getExpression(from, col.expr, fn, ths)));
   for(var i=0, I=columns.length; i<I; i++) {
     var col = columns[i], exps = ans[i];
@@ -114,16 +114,16 @@ async function tweakColumns(ast, fn, ths=null) {
   ast.columns = to;
 };
 
-function tweakWhere(ast, fn, ths=null) {
-  setSubexpression(ast.from, ast, 'where', fn, ths);
+function tweakWhere(from, ast, fn, ths=null) {
+  setSubexpression(from, ast, 'where', fn, ths);
 };
 
-function tweakHaving(ast, fn, ths=null) {
-  setSubexpression(ast.from, ast, 'having', fn, ths);
+function tweakHaving(from, ast, fn, ths=null) {
+  setSubexpression(from, ast, 'having', fn, ths);
 };
 
-async function tweakOrderBy(ast, fn, ths=null) {
-  var orderby = ast.orderby, from = ast.from, to = [];
+async function tweakOrderBy(from, ast, fn, ths=null) {
+  var orderby = ast.orderby, to = [];
   var ans = await Promise.all(orderby.map(col => getExpression(from, col.expr, fn, ths)));
   for(var i=0, I=orderby.length; i<I; i++) {
     var col = orderby[i], exps = ans[i];
@@ -133,8 +133,8 @@ async function tweakOrderBy(ast, fn, ths=null) {
   ast.orderby = to;
 };
 
-async function tweakGroupBy(ast, fn, ths=null) {
-  var groupby = ast.groupby, from = ast.from, to = [];
+async function tweakGroupBy(from, ast, fn, ths=null) {
+  var groupby = ast.groupby, to = [];
   var ans = await Promise.all(groupby.map(exp => getExpression(from, exp, fn, ths)));
   for(var val of ans)
     to.push.apply(to, val);
@@ -170,38 +170,39 @@ function appendWhere(ast, exp) {
   return ast;
 };
 
-async function tweakFrom(ast, fn, ths=null) {
-  var from = ast.from, to = new Map(), where = [];
+async function scanFrom(ast, fn, ths=null) {
+  var from = ast.from, to = new Set(), where = [];
   var ans = await Promise.all(from.map(b => fn.call(ths, b.table, 'table', null, null)||[]));
   for(var vals of ans) {
     for(var val of vals) {
-      if(IDENTIFIER.test(val)) to.set(dequote(val), table(dequote(val)));
+      if(IDENTIFIER.test(val)) to.add(dequote(val));
       else where.push(val);
     }
   }
-  ast.from = Array.from(to.values());
-  return where;
+  return {from: Array.from(to), where};
 };
 
-function tweakFromWhere(ast, whr) {
+function tweakFrom(ast, scn) {
   var ast = forkWhere(ast);
-  for(var val of whr)
+  for(var val of scn.where)
     appendWhere(ast, val);
+  ast.from = scn.from.map(v => table(v));
 };
 
 function slang(txt, fn, ths=null, opt={}) {
   var ast = new Parser().parse(clean(txt)), rdy = [];
   if(ast.type!=='select') return Promise.reject(new Error(`Only SELECT supported <<${txt}>>.`));
-  return tweakFrom(ast, fn, ths).then(whr => {
-    if(ast.from.length===0 && opt.from!=null) ast.from.push(table(opt.from));
-    if(typeof ast.columns!=='string') rdy.push(tweakColumns(ast, fn, ths));
-    if(ast.where!=null) rdy.push(tweakWhere(ast, fn, ths));
-    if(ast.having!=null) rdy.push(tweakHaving(ast, fn, ths));
-    if(ast.orderby!=null) rdy.push(tweakOrderBy(ast, fn, ths));
-    if(ast.groupby!=null) rdy.push(tweakGroupBy(ast, fn, ths));
-    return Promise.all(rdy).then(() => whr);
-  }).then(whr => {
-    tweakFromWhere(ast, whr);
+  return scanFrom(ast, fn, ths).then(scn => {
+    var from = scn.from;
+    if(from.length===0 && opt.from!=null) from.push(opt.from);
+    if(typeof ast.columns!=='string') rdy.push(tweakColumns(from, ast, fn, ths));
+    if(ast.where!=null) rdy.push(tweakWhere(from, ast, fn, ths));
+    if(ast.having!=null) rdy.push(tweakHaving(from, ast, fn, ths));
+    if(ast.orderby!=null) rdy.push(tweakOrderBy(from, ast, fn, ths));
+    if(ast.groupby!=null) rdy.push(tweakGroupBy(from, ast, fn, ths));
+    return Promise.all(rdy).then(() => scn);
+  }).then(scn => {
+    tweakFrom(ast, scn);
     if(ast.from.length===0) ast.from.push(table('null'));
     var lim = opt.limits? opt.limits[ast.from[0].table]||0:opt.limit||0;
     if(lim) setLimit(ast, lim);
