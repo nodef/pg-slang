@@ -193,7 +193,7 @@ function slang(txt, fn, ths=null, opt={}) {
   var ast = new Parser().parse(clean(txt)), rdy = [];
   if(ast.type!=='select') return Promise.reject(new Error(`Only SELECT supported <<${txt}>>.`));
   return tweakFrom(ast, fn, ths).then(whr => {
-    if(ast.from.length===0) ast.from.push(table(opt.from||'null'));
+    if(ast.from.length===0 && opt.from!=null) ast.from.push(table(opt.from));
     if(typeof ast.columns!=='string') rdy.push(tweakColumns(ast, fn, ths));
     if(ast.where!=null) rdy.push(tweakWhere(ast, fn, ths));
     if(ast.having!=null) rdy.push(tweakHaving(ast, fn, ths));
@@ -202,6 +202,7 @@ function slang(txt, fn, ths=null, opt={}) {
     return Promise.all(rdy).then(() => whr);
   }).then(whr => {
     tweakFromWhere(ast, whr);
+    if(ast.from.length===0) ast.from.push(table('null'));
     var lim = opt.limits? opt.limits[ast.from[0].table]||0:opt.limit||0;
     if(lim) setLimit(ast, lim);
     return astToSQL(ast);
