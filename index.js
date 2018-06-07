@@ -202,6 +202,7 @@ function slang(txt, fn, ths=null, opt={}) {
     if(ast.groupby!=null) rdy.push(tweakGroupBy(from, ast, fn, ths));
     return Promise.all(rdy).then(() => scn);
   }).then(scn => {
+    console.log(scn);
     tweakFrom(ast, scn);
     if(ast.from.length===0) ast.from.push(table('null'));
     var lim = opt.limits? opt.limits[ast.from[0].table]||0:opt.limit||0;
