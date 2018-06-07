@@ -1,6 +1,6 @@
 {
   "name": "pg-slang",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Convert informal SQL SELECT to formal SQL.",
   "main": "index.js",
   "scripts": {

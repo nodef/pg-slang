@@ -171,27 +171,37 @@ function appendWhere(ast, exp) {
 };
 
 async function tweakFrom(ast, fn, ths=null) {
-  var ast = forkWhere(ast), from = ast.from, to = new Map();
+  var from = ast.from, to = new Map(), where = [];
   var ans = await Promise.all(from.map(b => fn.call(ths, b.table, 'table', null)||[]));
   for(var vals of ans) {
     for(var val of vals) {
       if(IDENTIFIER.test(val)) to.set(dequote(val), table(dequote(val)));
-      else appendWhere(ast, val);
+      else where.push(val);
     }
   }
   ast.from = Array.from(to.values());
+  return where;
+};
+
+function tweakFromWhere(ast, whr) {
+  var ast = forkWhere(ast);
+  for(var val of whr)
+    appendWhere(ast, val);
 };
 
 function slang(txt, fn, ths=null, opt={}) {
   var ast = new Parser().parse(clean(txt)), rdy = [];
   if(ast.type!=='select') return Promise.reject(new Error(`Only SELECT supported <<${txt}>>.`));
-  if(typeof ast.columns!=='string') rdy.push(tweakColumns(ast, fn, ths));
-  if(ast.where!=null) rdy.push(tweakWhere(ast, fn, ths));
-  if(ast.having!=null) rdy.push(tweakHaving(ast, fn, ths));
-  if(ast.orderby!=null) rdy.push(tweakOrderBy(ast, fn, ths));
-  if(ast.groupby!=null) rdy.push(tweakGroupBy(ast, fn, ths));
-  return Promise.all(rdy).then(() => tweakFrom(ast, fn, ths)).then(() => {
+  return tweakFrom(ast, fn, ths).then(whr => {
     if(ast.from.length===0) ast.from.push(table(opt.from||'null'));
+    if(typeof ast.columns!=='string') rdy.push(tweakColumns(ast, fn, ths));
+    if(ast.where!=null) rdy.push(tweakWhere(ast, fn, ths));
+    if(ast.having!=null) rdy.push(tweakHaving(ast, fn, ths));
+    if(ast.orderby!=null) rdy.push(tweakOrderBy(ast, fn, ths));
+    if(ast.groupby!=null) rdy.push(tweakGroupBy(ast, fn, ths));
+    return Promise.all(rdy).then(() => whr);
+  }).then(whr => {
+    tweakFromWhere(ast, whr);
     var lim = opt.limits? opt.limits[ast.from[0].table]||0:opt.limit||0;
     if(lim) setLimit(ast, lim);
     return astToSQL(ast);
