@@ -25,7 +25,7 @@ const slang = require('pg-slang');
 
 // <map fn>(<text>, <type>, [hint], [from]):
 // - text: field name, like "food name", "trans fat", "food", ...
-// - type: field type, can be "column" or "table"
+// - type: field type, can be "from","columns", "where", "having", "orderBy", or "groupBy"
 // - hint: field hint, can be null, "all", "sum", or "avg"
 // - from: field from, will be null for type=table
 // -> Promise [<value>]
