@@ -1,0 +1,33 @@
+{
+  "name": "pg-slang",
+  "version": "0.1.6",
+  "description": "Convert informal SQL SELECT to formal SQL.",
+  "main": "index.js",
+  "scripts": {
+    "test": "exit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nodef/pg-slang.git"
+  },
+  "keywords": [
+    "pg",
+    "slang",
+    "sql",
+    "select",
+    "informal",
+    "formal",
+    "table",
+    "column",
+    "row"
+  ],
+  "author": "wolfram77@gmail.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nodef/pg-slang/issues"
+  },
+  "homepage": "https://github.com/nodef/pg-slang#readme",
+  "dependencies": {
+    "flora-sql-parser": "^0.7.7"
+  }
+}
