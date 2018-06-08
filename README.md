@@ -3,6 +3,7 @@
 [![NPM](https://nodei.co/npm/pg-slang.png)](https://nodei.co/npm/pg-slang/)
 
 Convert informal [SQL SELECT] to formal SQL.
+> NOTE: [pg-english] can convert english query to informal SQL.
 
 ```sql
 -- ex: SLANG
@@ -121,3 +122,4 @@ slang(/*  */, fnDB, null, options).then(console.log);
 
 
 [SQL SELECT]: https://www.postgresql.org/docs/10/static/sql-select.html
+[pg-english]: https://www.npmjs.com/package/pg-english
