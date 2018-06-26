@@ -114,12 +114,12 @@ async function tweakColumns(from, ast, fn, ths=null) {
   ast.columns = to;
 };
 
-function tweakWhere(from, ast, fn, ths=null) {
-  setSubexpression('where', from, ast, 'where', fn, ths);
+async function tweakWhere(from, ast, fn, ths=null) {
+  await setSubexpression('where', from, ast, 'where', fn, ths);
 };
 
-function tweakHaving(from, ast, fn, ths=null) {
-  setSubexpression('having', from, ast, 'having', fn, ths);
+async function tweakHaving(from, ast, fn, ths=null) {
+  await setSubexpression('having', from, ast, 'having', fn, ths);
 };
 
 async function tweakOrderBy(from, ast, fn, ths=null) {
