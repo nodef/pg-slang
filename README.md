@@ -120,6 +120,7 @@ slang(/*  */, fnDB, null, options).then(console.log);
 // 12. Experiment! And mail me for issues / pull requests!
 ```
 
+![](https://ga-beacon.deno.dev/G-RC63DPBH3P:SH3Eq-NoQ9mwgYeHWxu7cw/github.com/nodef/pg-slang)
 
 [SQL SELECT]: https://www.postgresql.org/docs/10/static/sql-select.html
 [pg-english]: https://www.npmjs.com/package/pg-english
